@@ -1,16 +1,17 @@
 version: "3.9"
 services:
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres:
+    image: postgres:16-alpine
     container_name: productvault-db
     environment:
-      SA_PASSWORD: "product-vault"
-      ACCEPT_EULA: "Y"
+      POSTGRES_USER: sa
+      POSTGRES_PASSWORD: product-vault
+      POSTGRES_DB: productvaultdb
     ports:
-      - "1433:1433"
+      - "5432:5432"
     volumes:
-      - mssql_data:/var/opt/mssql
+      - postgres_data:/var/lib/postgresql/data
     restart: always
 
 volumes:
-  mssql_data:
+  postgres_data:
