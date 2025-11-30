@@ -127,8 +127,12 @@ Fetching 1,000 product images at once consumes massive bandwidth and memory. By 
 -----
 
 ## 📸 Screenshots & Demo
+Demo video link : https://drive.google.com/file/d/1s3ZJV1vHvwBRSFG5wFT7CweY-o96baE9/view?usp=sharing
+
 <img width="1903" height="928" alt="Screenshot 2025-11-30 at 3 22 20 PM" src="https://github.com/user-attachments/assets/11227a44-1469-4331-beef-88a050f0a40e" />
+
 <img width="1080" height="640" alt="Screenshot 2025-11-30 at 3 22 48 PM" src="https://github.com/user-attachments/assets/283d1bf7-a362-40b8-bf87-2fc4586a8c08" />
+
 <img width="1122" height="401" alt="Screenshot 2025-11-30 at 3 23 53 PM" src="https://github.com/user-attachments/assets/95e9b0d4-d39a-40eb-bdbe-678317a8ee54" />
 
 
