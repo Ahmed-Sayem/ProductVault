@@ -46,90 +46,6 @@ public class DefaultProductService implements ProductService {
   private String baseUrl;
 
   @Override
-  @CacheEvict(value = "products", allEntries = true)
-  public UploadResponse uploadProducts(List<MultipartFile> files) {
-    List<Product> successList = new ArrayList<>();
-    List<String> failedList = new ArrayList<>();
-
-    String projectRoot = System.getProperty("user.dir");
-    Path baseDir = Paths.get(projectRoot, uploadDir);
-
-    if (!Files.exists(baseDir)) {
-      try {
-        Files.createDirectories(baseDir);
-      }
-      catch (IOException e) {
-        throw new RuntimeException("Could not initialize folder", e);
-      }
-    }
-
-    for (MultipartFile file : files) {
-      Product product = null;
-      Path productFolder = null;
-
-      try {
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-          throw new RuntimeException("Invalid file type: " + contentType + ". Only images allowed.");
-        }
-
-        product = new Product();
-        product.setName(file.getOriginalFilename());
-        product.setDescription("Uploaded via Bulk API");
-        product = productRepository.save(product);
-
-        String folderName = "PV-" + product.getId();
-        productFolder = baseDir.resolve(folderName);
-        Files.createDirectories(productFolder);
-
-        String safeImageName = file.getOriginalFilename()
-            .replaceAll("\\s+", "_");
-        Path imagePath = productFolder.resolve(safeImageName);
-        file.transferTo(imagePath.toFile());
-
-        String fullUrl = baseUrl + "/uploads/" + folderName + "/" + safeImageName;
-        product.setImageUrl(fullUrl);
-        product.setFolderPath(productFolder.toAbsolutePath()
-                                  .toString());
-
-        Product finalProduct = productRepository.save(product);
-
-        File metadataFile = productFolder.resolve("product.json")
-            .toFile();
-        objectMapper.writeValue(metadataFile, finalProduct);
-
-        successList.add(finalProduct);
-      }
-      catch (Exception e) {
-        log.error("Failed to process file: {}", file.getOriginalFilename(), e);
-        failedList.add(file.getOriginalFilename());
-
-        if (product != null && product.getId() != null) {
-          productRepository.deleteById(product.getId());
-          log.info("Rolled back DB entry for ID: {}", product.getId());
-        }
-
-        if (productFolder != null && Files.exists(productFolder)) {
-          try (Stream<Path> walk = Files.walk(productFolder)) {
-            walk.sorted(Comparator.reverseOrder())
-                .map(Path::toFile)
-                .forEach(File::delete);
-            log.info("Rolled back folder: {}", productFolder);
-          }
-          catch (IOException ioException) {
-            log.error("CRITICAL: Could not delete folder during rollback: {}", productFolder, ioException);
-          }
-        }
-      }
-    }
-
-    return UploadResponse.builder()
-        .successful(successList)
-        .failed(failedList)
-        .build();
-  }
-
-  @Override
   @Transactional(readOnly = true)
   @Cacheable(value = "products", key = "#request.toString()")
   public ProductResponse getAllProducts(ProductRequest request) {
@@ -139,17 +55,144 @@ public class DefaultProductService implements ProductService {
                     .descending();
 
     Pageable pageable = PageRequest.of(request.getPageNo(), request.getPageSize(), sort);
+    Page<Product> page = productRepository.findAll(pageable);
 
-    Page<Product> products = productRepository.findAll(pageable);
-    List<Product> listOfProducts = products.getContent();
+    return buildProductResponse(page);
+  }
 
+  @Override
+  @CacheEvict(value = "products", allEntries = true)
+  public UploadResponse uploadProducts(List<MultipartFile> files) {
+    List<Product> successList = new ArrayList<>();
+    List<String> failedList = new ArrayList<>();
+
+    Path baseDir = initializeBaseDirectory();
+
+    for (MultipartFile file : files) {
+      try {
+        validateImageFile(file);
+        Product savedProduct = processSingleProduct(file, baseDir);
+
+        successList.add(savedProduct);
+      }
+      catch (Exception e) {
+        log.error("Failed to upload file: {}", file.getOriginalFilename(), e);
+        failedList.add(file.getOriginalFilename());
+      }
+    }
+
+    return UploadResponse.builder()
+        .successful(successList)
+        .failed(failedList)
+        .build();
+  }
+
+  /**
+   * Handles the full lifecycle of a SINGLE product upload.
+   * Contains its own try-catch-rollback mechanism.
+   */
+  private Product processSingleProduct(MultipartFile file, Path baseDir) throws IOException {
+    Product product = null;
+    Path productFolder = null;
+
+    try {
+      product = new Product();
+      product.setName(file.getOriginalFilename());
+      product.setDescription("Uploaded via Bulk API");
+      product = productRepository.save(product);
+
+      String folderName = "PV-" + product.getId();
+      productFolder = baseDir.resolve(folderName);
+      Files.createDirectories(productFolder);
+
+      String safeImageName = sanitizeFilename(file.getOriginalFilename());
+      Path imagePath = productFolder.resolve(safeImageName);
+      file.transferTo(imagePath.toFile());
+
+      String fullUrl = baseUrl + "/uploads/" + folderName + "/" + safeImageName;
+      product.setImageUrl(fullUrl);
+      product.setFolderPath(productFolder.toAbsolutePath()
+                                .toString());
+
+      Product finalProduct = productRepository.save(product);
+
+      createMetadataFile(productFolder, finalProduct);
+
+      return finalProduct;
+    }
+    catch (Exception e) {
+      performRollback(product, productFolder);
+      throw e;
+    }
+  }
+
+  private void performRollback(Product product, Path productFolder) {
+    // Rollback DB
+    if (product != null && product.getId() != null) {
+      try {
+        productRepository.deleteById(product.getId());
+        log.info("Rolled back DB entry for ID: {}", product.getId());
+      }
+      catch (Exception ex) {
+        log.error("Failed to delete DB entry ID {}", product.getId(), ex);
+      }
+    }
+    if (productFolder != null && Files.exists(productFolder)) {
+      deleteFolderRecursively(productFolder);
+    }
+  }
+
+  private Path initializeBaseDirectory() {
+    String projectRoot = System.getProperty("user.dir");
+    Path baseDir = Paths.get(projectRoot, uploadDir);
+    if (!Files.exists(baseDir)) {
+      try {
+        Files.createDirectories(baseDir);
+      }
+      catch (IOException e) {
+        throw new RuntimeException("Could not initialize base upload directory", e);
+      }
+    }
+    return baseDir;
+  }
+
+  private void validateImageFile(MultipartFile file) {
+    String contentType = file.getContentType();
+    if (contentType == null || !contentType.startsWith("image/")) {
+      throw new RuntimeException("Invalid file type: " + contentType);
+    }
+  }
+
+  private String sanitizeFilename(String filename) {
+    return filename == null ? "unknown" : filename.replaceAll("\\s+", "_");
+  }
+
+  private void createMetadataFile(Path productFolder, Product product) throws IOException {
+    File metadataFile = productFolder.resolve("product.json")
+        .toFile();
+    objectMapper.writeValue(metadataFile, product);
+  }
+
+  private void deleteFolderRecursively(Path folder) {
+    try (Stream<Path> walk = Files.walk(folder)) {
+      walk.sorted(Comparator.reverseOrder())
+          .map(Path::toFile)
+          .forEach(File::delete);
+      log.info("Cleaned up folder: {}", folder);
+    }
+    catch (IOException e) {
+      log.error("Could not delete folder: {}", folder, e);
+    }
+  }
+
+  private ProductResponse buildProductResponse(Page<Product> page) {
     return ProductResponse.builder()
-        .content(listOfProducts)
-        .pageNo(products.getNumber())
-        .pageSize(products.getSize())
-        .totalElements(products.getTotalElements())
-        .totalPages(products.getTotalPages())
-        .last(products.isLast())
+        .content(page.getContent())
+        .pageNo(page.getNumber())
+        .pageSize(page.getSize())
+        .totalElements(page.getTotalElements())
+        .totalPages(page.getTotalPages())
+        .last(page.isLast())
         .build();
   }
 }
