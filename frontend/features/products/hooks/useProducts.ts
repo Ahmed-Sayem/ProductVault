@@ -1,41 +1,41 @@
-import { useState, useEffect } from "react";
-import { Product } from "../types";
+import { useState } from "react";
+import { useQuery, keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { productApi } from "../api";
 
-export const useProducts = (itemsPerPage = 6) => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+export const useProducts = (pageSize = 6) => {
+  const [currentPage, setCurrentPage] = useState(0);
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const data = await productApi.getAll();
-      setProducts(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['products', currentPage, pageSize],
+    queryFn: () => productApi.getAll({
+      pageNo: currentPage,
+      pageSize: pageSize,
+      sortBy: "id",
+      sortType: "desc"
+    }),
+
+    placeholderData: keepPreviousData,
+  });
+
+  const products = data?.content ?? [];
+  const totalPages = data?.totalPages ?? 0;
+  const totalElements = data?.totalElements ?? 0;
+
+  const changePage = (newPage: number) => {
+    if (newPage >= 0 && newPage < totalPages) {
+      setCurrentPage(newPage);
     }
   };
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  // Pagination Logic
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = products.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(products.length / itemsPerPage);
-
   return {
     products,
-    currentItems,
+    loading: isLoading,
     currentPage,
     totalPages,
-    setCurrentPage,
-    refresh: fetchProducts,
-    loading
+    totalElements,
+    changePage,
+    refresh: () => queryClient.invalidateQueries({ queryKey: ['products'] })
   };
 };

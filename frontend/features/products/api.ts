@@ -1,13 +1,20 @@
 import { apiClient } from "@/lib/axios";
-import { Product } from "./types";
+import {ProductRequest, ProductResponse, UploadResponse} from "./types";
 
 export const productApi = {
-  getAll: async (): Promise<Product[]> => {
-    const { data } = await apiClient.get("/products");
+  getAll: async (req: ProductRequest = {}): Promise<ProductResponse> => {
+    const { data } = await apiClient.get("/products", {
+      params: {
+        pageNo: req.pageNo ?? 0,
+        pageSize: req.pageSize ?? 6,
+        sortBy: req.sortBy ?? "id",
+        sortType: req.sortType ?? "desc",
+      },
+    });
     return data;
   },
 
-  upload: async (formData: FormData, onProgress: (percent: number) => void): Promise<Product[]> => {
+  upload: async (formData: FormData, onProgress: (percent: number) => void):Promise<UploadResponse> => {
     const { data } = await apiClient.post("/products/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
       onUploadProgress: (ev) => {
