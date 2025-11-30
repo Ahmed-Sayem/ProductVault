@@ -13,6 +13,12 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,6 +26,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.sayem.ProductVault.model.Product;
+import com.sayem.ProductVault.model.ProductRequest;
+import com.sayem.ProductVault.model.ProductResponse;
 import com.sayem.ProductVault.repository.ProductRepository;
 
 @Service
@@ -34,6 +42,7 @@ public class DefaultProductService implements ProductService {
   private String baseUrl;
 
   @Override
+  @CacheEvict(value = "products", allEntries = true)
   public List<Product> uploadProducts(List<MultipartFile> files) throws IOException {
     List<Product> savedProducts = new ArrayList<>();
 
@@ -88,7 +97,26 @@ public class DefaultProductService implements ProductService {
   }
 
   @Override
-  public List<Product> getAllProducts() {
-    return productRepository.findAll();
+  @Cacheable(value = "products", key = "#request.toString()")
+  public ProductResponse getAllProducts(ProductRequest request) {
+    Sort sort = request.getSortType()
+                    .equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(request.getSortBy())
+                    .ascending() : Sort.by(request.getSortBy())
+                    .descending();
+
+    Pageable pageable = PageRequest.of(request.getPageNo(), request.getPageSize(), sort);
+
+    Page<Product> products = productRepository.findAll(pageable);
+
+    List<Product> listOfProducts = products.getContent();
+
+    return ProductResponse.builder()
+        .content(listOfProducts)
+        .pageNo(products.getNumber())
+        .pageSize(products.getSize())
+        .totalElements(products.getTotalElements())
+        .totalPages(products.getTotalPages())
+        .last(products.isLast())
+        .build();
   }
 }

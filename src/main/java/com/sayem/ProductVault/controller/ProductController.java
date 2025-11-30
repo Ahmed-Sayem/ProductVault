@@ -10,6 +10,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 
 import com.sayem.ProductVault.model.Product;
+import com.sayem.ProductVault.model.ProductRequest;
+import com.sayem.ProductVault.model.ProductResponse;
 import com.sayem.ProductVault.service.ProductService;
 
 @RestController
@@ -33,8 +35,8 @@ public class ProductController {
   }
 
   @GetMapping
-  public ResponseEntity<List<Product>> getAllProducts() {
-    return ResponseEntity.ok(productService.getAllProducts());
+  public ResponseEntity<ProductResponse> getAllProducts(ProductRequest request) {
+    return ResponseEntity.ok(productService.getAllProducts(request));
   }
 }
 
