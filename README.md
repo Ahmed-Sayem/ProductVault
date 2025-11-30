@@ -17,7 +17,7 @@ Unlike simple CRUD apps, this project focuses on **Bulk Operations**, **Data Con
   * **Smart Bulk Upload:** Handles multiple files simultaneously with a "Partial Success" strategy.
   * **Transaction Management:** Custom rollback logic to handle the "Atomicity Mismatch" between the Database and the File System.
   * **Structured Storage:** Automatically organizes uploads into `PV-{ID}` folders.
-  * **Performance:** Implements **Server-Side Pagination** and **Caching** (Redis via Docker) for instant gallery loading.
+  * **Performance:** Implements **Server-Side Pagination** and **Caching** for instant gallery loading.
   * **Global Error Handling:** Centralized exception handling for clean API responses.
 
 #### 🎨 Frontend (Next.js & TypeScript)
@@ -36,14 +36,13 @@ The system follows a modular architecture using Docker to containerize dependenc
 
   * **App:** Next.js (Frontend) + Spring Boot (Backend)
   * **Data:** PostgreSQL (Database)
-  * **Cache:** Redis (Caching Layer)
   * **Infra:** Docker Compose (Orchestration)
 
 -----
 
 ## 🚀 Getting Started
 
-We use **Docker** to spin up the Database and Cache. This means you **do not** need to manually install PostgreSQL or Redis on your machine.
+We use **Docker** to spin up the Database and Cache. This means you **do not** need to manually install PostgreSQL on your machine.
 
 ### Prerequisites
 
@@ -53,14 +52,14 @@ We use **Docker** to spin up the Database and Cache. This means you **do not** n
 
 ### 1\. Infrastructure Setup (Docker)
 
-Start the PostgreSQL database and Redis cache instantly:
+Start the PostgreSQL database instantly:
 
 ```bash
 # In the project root
 docker-compose up -d
 ```
 
-*This will pull the images and start the services on ports `5432` (DB) and `6379` (Redis).*
+*This will pull the images and start the services on ports `5432` (DB).*
 
 ### 2\. Backend Setup (Spring Boot)
 
