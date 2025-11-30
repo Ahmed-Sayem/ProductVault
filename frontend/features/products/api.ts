@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/axios";
-import { ProductRequest, ProductResponse } from "./types";
+import {ProductRequest, ProductResponse, UploadResponse} from "./types";
 
 export const productApi = {
   getAll: async (req: ProductRequest = {}): Promise<ProductResponse> => {
@@ -14,7 +14,7 @@ export const productApi = {
     return data;
   },
 
-  upload: async (formData: FormData, onProgress: (percent: number) => void) => {
+  upload: async (formData: FormData, onProgress: (percent: number) => void):Promise<UploadResponse> => {
     const { data } = await apiClient.post("/products/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
       onUploadProgress: (ev) => {

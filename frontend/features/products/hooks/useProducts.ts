@@ -9,8 +9,6 @@ export const useProducts = (pageSize = 6) => {
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', currentPage, pageSize],
-
-    // The Fetch Function
     queryFn: () => productApi.getAll({
       pageNo: currentPage,
       pageSize: pageSize,

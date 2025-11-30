@@ -20,3 +20,8 @@ export interface ProductRequest {
   sortBy?: string;
   sortType?: string;
 }
+
+export interface UploadResponse {
+  successful: Product[];
+  failed: string[];
+}

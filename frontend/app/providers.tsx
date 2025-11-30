@@ -7,7 +7,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        // Data is considered fresh for 1 minute (no refetching)
+        // Data is considered fresh for 1 minute
         staleTime: 60 * 1000,
       },
     },

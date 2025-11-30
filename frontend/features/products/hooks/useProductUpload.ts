@@ -11,15 +11,21 @@ export const useProductUpload = (onSuccess: () => void) => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFiles(e.target.files);
-      resetStatus();
+      const valid = validateFiles(e.target.files);
+      if (valid.length > 0) {
+        setFiles(e.target.files);
+        resetStatus();
+      }
     }
   };
 
   const handleDrop = (droppedFiles: FileList) => {
     if (droppedFiles.length > 0) {
-      setFiles(droppedFiles);
-      resetStatus();
+      const valid = validateFiles(droppedFiles);
+      if (valid.length > 0) {
+        setFiles(droppedFiles);
+        resetStatus();
+      }
     }
   };
 
@@ -36,10 +42,18 @@ export const useProductUpload = (onSuccess: () => void) => {
 
     try {
       setStatus("Uploading...");
+      const response = await productApi.upload(formData, (percent) => setProgress(percent));
 
-      await productApi.upload(formData, (percent) => setProgress(percent));
+      if (response.failed && response.failed.length > 0) {
+        const successCount = response.successful ? response.successful.length : 0;
+        const failCount = response.failed.length;
 
-      setStatus("Success!");
+        setStatus(`Completed: ${successCount} saved, but ${failCount} failed.`);
+        console.warn("The following files failed to upload:", response.failed);
+      } else {
+        setStatus("Success! All files uploaded.");
+      }
+
       setFiles(null);
 
       await queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -49,12 +63,31 @@ export const useProductUpload = (onSuccess: () => void) => {
       setTimeout(() => {
         setProgress(0);
         setStatus("");
-      }, 2000);
+      }, 4000);
 
     } catch (error) {
       console.error(error);
       setStatus("Failed to upload.");
     }
+  };
+
+  const validateFiles = (incomingFiles: FileList): File[] => {
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+
+    Array.from(incomingFiles).forEach(file => {
+      if (file.type.startsWith("image/")) {
+        validFiles.push(file);
+      } else {
+        invalidFiles.push(file.name);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      alert(`Skipped invalid files (only images allowed): \n${invalidFiles.join("\n")}`);
+    }
+
+    return validFiles;
   };
 
   return { files, progress, status, handleFileChange, handleDrop, upload };

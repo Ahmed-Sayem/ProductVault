@@ -7,14 +7,11 @@ interface UploadWidgetProps {
 
 export const UploadWidget = ({ onUploadSuccess }: UploadWidgetProps) => {
   const { files, progress, status, handleFileChange, handleDrop, upload } = useProductUpload(onUploadSuccess);
-
-  // UI State for the drag effect
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Drag Events ---
   const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Essential to allow dropping
+    e.preventDefault();
     setIsDragging(true);
   };
 
@@ -31,7 +28,6 @@ export const UploadWidget = ({ onUploadSuccess }: UploadWidgetProps) => {
     }
   };
 
-  // Allow clicking the box to trigger the hidden input
   const handleClick = () => {
     fileInputRef.current?.click();
   };
@@ -39,8 +35,6 @@ export const UploadWidget = ({ onUploadSuccess }: UploadWidgetProps) => {
   return (
       <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 mb-10">
         <h2 className="text-xl font-semibold mb-4 text-gray-700">Bulk Upload</h2>
-
-        {/* --- DROP ZONE --- */}
         <div
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
@@ -60,7 +54,7 @@ export const UploadWidget = ({ onUploadSuccess }: UploadWidgetProps) => {
               accept="image/*"
               onChange={handleFileChange}
               ref={fileInputRef}
-              className="hidden" // Hide the ugly default input
+              className="hidden"
           />
 
           {/* Icon */}

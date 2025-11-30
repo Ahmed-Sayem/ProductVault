@@ -29,7 +29,6 @@ export const ProductGrid = ({ products, loading }: ProductGridProps) => {
   return (
       <div className="relative min-h-[400px]"> {}
 
-        {/* --- LOADING OVERLAY --- */}
         {/* This appears ON TOP of the existing grid when loading is true */}
         {loading && (
             <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-[1px] flex items-center justify-center rounded-xl transition-all duration-300">
@@ -41,7 +40,6 @@ export const ProductGrid = ({ products, loading }: ProductGridProps) => {
             </div>
         )}
 
-        {/* --- THE GRID --- */}
         {/* We reduce opacity when loading, but we DO NOT remove it */}
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-opacity duration-300 ${loading ? 'opacity-40' : 'opacity-100'}`}>
           {products.map((product) => (
